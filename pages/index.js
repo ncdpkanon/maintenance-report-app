@@ -1,51 +1,90 @@
+import { useState } from 'react';
+import { signIn, useSession } from 'next-auth/react';
+import { useRouter } from 'next/router';
+import dynamic from 'next/dynamic';
 
-import React, { useState } from 'react';
+const Preview = dynamic(() => import('./preview'), { ssr: false });
 
 export default function Home() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
+
   const [form, setForm] = useState({
-    property: '',
+    site: '',
     date: '',
     time: '',
-    members: 1,
-    supervisor: '',
-    machines: '',
+    people: '',
+    manager: '',
+    machine: '',
     racks: '',
-    abnormalities: 'None',
-    workDetails: ''
+    abnormal: 'あり',
+    content: '',
+    image: null
   });
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    const { name, value, files } = e.target;
+    if (name === 'image') {
+      setForm({ ...form, image: files[0] });
+    } else {
+      setForm({ ...form, [name]: value });
+    }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    alert(JSON.stringify(form, null, 2));
+  const handleSubmit = async () => {
+    if (!session) {
+      alert('ログインが必要です。ログイン後に再度お試しください。');
+      signIn();
+      return;
+    }
+
+    alert('保存処理をスキップしてプレビュー画面へ遷移します。');
+    router.push({
+      pathname: '/preview',
+      query: form
+    });
   };
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>作業報告フォーム</h1>
-      <form onSubmit={handleSubmit}>
-        <label>物件名: <input name="property" value={form.property} onChange={handleChange} /></label><br />
-        <label>点検日: <input type="date" name="date" value={form.date} onChange={handleChange} /></label><br />
-        <label>作業時間: <input name="time" value={form.time} onChange={handleChange} /></label><br />
-        <label>作業人数: <input type="number" name="members" value={form.members} onChange={handleChange} /></label><br />
-        <label>責任者: <input name="supervisor" value={form.supervisor} onChange={handleChange} /></label><br />
-        <label>精算機機種: <input name="machines" value={form.machines} onChange={handleChange} /></label><br />
-        <label>ラック台数: <input name="racks" value={form.racks} onChange={handleChange} /></label><br />
-        <label>異常の有無:
-          <select name="abnormalities" value={form.abnormalities} onChange={handleChange}>
-            <option value="None">なし</option>
-            <option value="あり">あり</option>
-          </select>
-        </label><br />
-        <label>作業内容:<br />
-          <textarea name="workDetails" value={form.workDetails} onChange={handleChange} rows="4" cols="50" />
-        </label><br />
-        <button type="submit">保存</button>
-      </form>
+    <div className="p-6 space-y-4">
+      <h1 className="text-2xl font-bold">作業報告フォーム</h1>
+      {["site", "date", "time", "people", "manager", "machine", "racks"].map((field, idx) => (
+        <div key={idx}>
+          <label>{
+            {
+              site: '物件名',
+              date: '点検日',
+              time: '作業時間',
+              people: '作業人数',
+              manager: '責任者',
+              machine: '精算機機種',
+              racks: 'ラック台数'
+            }[field]
+          }</label>
+          <input type="text" name={field} className="border w-full" onChange={handleChange} />
+        </div>
+      ))}
+      <div>
+        <label>異常の有無:</label>
+        <select name="abnormal" className="border w-full" onChange={handleChange}>
+          <option value="あり">あり</option>
+          <option value="なし">なし</option>
+        </select>
+      </div>
+      <div>
+        <label>作業内容:</label>
+        <textarea name="content" className="border w-full" rows={4} onChange={handleChange} />
+      </div>
+      <div>
+        <label>作業画像のアップロード:</label>
+        <input type="file" name="image" accept="image/*" className="border w-full" onChange={handleChange} />
+      </div>
+      <button
+        className="bg-blue-500 text-white px-4 py-2 mt-2"
+        onClick={handleSubmit}
+      >
+        保存 & プレビュー
+      </button>
     </div>
   );
 }
