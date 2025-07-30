@@ -1,8 +1,8 @@
-import { getToken } from "next-auth/jwt";
-import formidable from "formidable";
-import fs from "fs";
-import path from "path";
-import { saveToOneDrive } from "@/lib/onedrive";
+
+import formidable from 'formidable';
+import { getToken } from 'next-auth/jwt';
+import { saveToOneDrive } from '@/lib/onedrive';
+import fs from 'fs';
 
 export const config = {
   api: {
@@ -12,24 +12,22 @@ export const config = {
 
 export default async function handler(req, res) {
   const token = await getToken({ req });
-  if (!token) return res.status(401).json({ error: "Unauthorized" });
+  const accessToken = token?.accessToken;
 
-  const form = formidable({ multiples: true, keepExtensions: true });
+  if (!accessToken) {
+    return res.status(401).json({ error: 'Unauthorized - no accessToken found' });
+  }
+
+  const form = new formidable.IncomingForm();
 
   form.parse(req, async (err, fields, files) => {
-    if (err) return res.status(500).json({ error: "Form parsing error" });
+    if (err) return res.status(500).json({ error: 'Form parse error' });
 
-    const file = files?.upload;
-    if (!file) return res.status(400).json({ error: "No file uploaded" });
+    const file = files.file;
+    const buffer = await fs.promises.readFile(file.filepath);
+    const fileName = file.originalFilename;
 
-    try {
-      const filePath = file[0].filepath;
-      const fileBuffer = fs.readFileSync(filePath);
-      const fileName = path.basename(file[0].originalFilename);
-      const result = await saveToOneDrive(fileBuffer, fileName, token.accessToken);
-      res.status(200).json({ success: true, result });
-    } catch (error) {
-      res.status(500).json({ error: "Upload failed", details: error.message });
-    }
+    const result = await saveToOneDrive(accessToken, fileName, buffer);
+    return res.status(200).json({ status: 'success', result });
   });
 }
