@@ -1,26 +1,26 @@
 'use client';
 import { useState } from 'react';
-import { useSession, signIn } from 'next-auth/react';
 
-export default function HomeFormPage() {
-  const { data: session, status } = useSession();
-  const [form, setForm] = useState({ site: '', content: '', image: null });
+export default function HomeFormPage({ session }) {
+  const [file, setFile] = useState(null);
 
-  if (status === 'loading') return <p>Loading...</p>;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
 
-  if (!session) return (
-    <div>
-      <p>ログインが必要です</p>
-      <button onClick={() => signIn('google')}>Googleでログイン</button>
-    </div>
-  );
+    await fetch('/api/onedrive-upload', {
+      method: 'POST',
+      body: formData,
+    });
+  };
 
   return (
-    <form className="space-y-4">
-      <input type="text" name="site" onChange={e => setForm({...form, site: e.target.value})} placeholder="物件名" />
-      <textarea name="content" onChange={e => setForm({...form, content: e.target.value})} placeholder="作業内容" />
-      <input type="file" name="image" onChange={e => setForm({...form, image: e.target.files[0]})} />
-      <button type="submit">保存</button>
+    <form onSubmit={handleSubmit}>
+      <p>{session?.user?.email}でログイン中</p>
+      <input type="file" onChange={(e) => setFile(e.target.files[0])} />
+      <button type="submit">アップロード</button>
     </form>
   );
 }

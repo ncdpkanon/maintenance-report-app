@@ -1,21 +1,21 @@
 import formidable from 'formidable';
+import fs from 'fs';
+import { getToken } from 'next-auth/jwt';
 import { saveToOneDrive } from '@/lib/onedrive';
 
 export const config = {
-  api: {
-    bodyParser: false,
-  },
+  api: { bodyParser: false }
 };
 
 export default async function handler(req, res) {
-  const form = formidable();
+  const token = await getToken({ req });
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+  const form = new formidable.IncomingForm();
   form.parse(req, async (err, fields, files) => {
-    if (err) return res.status(500).send('Error parsing form');
-    try {
-      const result = await saveToOneDrive(fields, files);
-      res.status(200).json({ success: true, result });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
+    const file = fs.readFileSync(files.file[0].filepath);
+    const fileName = files.file[0].originalFilename;
+    const result = await saveToOneDrive(token.accessToken, fileName, file);
+    res.status(200).json(result);
   });
 }
